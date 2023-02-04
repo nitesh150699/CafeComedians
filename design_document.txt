@@ -1,0 +1,81 @@
+Design Document for cafe Comedians
+
+
+Design Steps:
+
+
+ 1) create Users DB and Comedians DB for insert / update details
+ 
+ Users Schema
+ 
+ uid | Name | emailId | image_link
+ 
+ ------------------------
+ 
+ Comedian Schema
+ 
+ cid | Name | emailId | image_link
+ ---------------------------
+ 
+ ( or ) we can store both details in single db with extra column Type : User / Comedian 
+  
+ --------------------------------------------------------
+ 2) Create Scheduler DB
+ 
+ partitionID | scheduleTime | isCompleted | uid | cid ( for each user multiple rows with different cid )
+ 
+ ----------------------------------------------
+ 3) comedians reaction table
+ 
+ cid | message  
+ 
+ ------------------------
+ 4) User selection db
+ 
+ uid | cid | eventTime
+ 
+
+---------------
+Technologies Suggestions
+
+
+ 1) Micro Services Architecture ( As different services scale differently )
+ 2) Kafka : Messaging Queues ( Event publisher - subscribe )
+ 3) Schedulers : Apache Airflow
+ 4) Databases : MySQL ( as we have fixed schema )
+ 5) Scheduler db : MYSQL ( Transaction Guarentee is required )
+ 6) Cache : Redis ( Faster access )
+ 7) Distributed log Tracing : Spring Cloud Seluth
+ 8) Health checks and Fault tolerence : Resilence4J
+ 9) Amazon s3 : To store comedian pics 
+
+------------------
+Queries
+
+
+1) Fetch top 20 comedians + 5 random from db
+
+SELECT * FROM comedians_table ORDER BY reactions_count LIMIT 20;
+UNION ALL
+SELECT * FROM comedians_table ORDER BY RAND() LIMIT 5;
+
+------------
+Flow 
+
+1) Register Users and Comedians
+2) To send emails to all Users 
+
+a) Divide users into batches ( a batch of 1000 users )
+b) inset a email schedule time 
+c) fetch top 20 comedian and random 5 commands which is stored in cache 
+d) Using load balancer assign each batch to services for sending mails
+e) As sending mail notification is not a priority task. it can be pushed into message queues to send little late asynchronously
+3) Send  Comedian reply emails to customised users:
+
+Fetch the users who selected particular comedian in past 30 days ( As event time is stored in customer events table )
+follow the previous step for sending emails
+
+4) Once user received email he might or might not select comedian. If he selects . event will be pushed into message queue and db updation will be taken place accordingly
+
+
+
